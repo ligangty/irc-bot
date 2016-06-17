@@ -13,16 +13,15 @@
 		<!-- Versions -->
 		<java.version>1.8</java.version>
 		<slf4j.version>1.7.9</slf4j.version>
-		<guava.version>11.0.2-atlassian-02</guava.version>
+		<guava.version>19.0</guava.version>
 		<gson.version>2.7</gson.version>
 		<junit.version>4.11</junit.version>
 		<mockito.version>1.10.0</mockito.version>
 		<camel.version>2.17.1</camel.version>
-		<irclib.version>2.0.0.Alpha3</irclib.version>
-
+    <apache.ds.version>2.0.0-M21</apache.ds.version>
+    <!--
 		<spring.version>2.5.6.SEC01</spring.version>
-
-
+    -->
 	</properties>
 
 
@@ -66,13 +65,6 @@
 		    <artifactId>camel-irc</artifactId>
 		    <version>${camel.version}</version>
 			</dependency>
-			<!--
-			<dependency>
-	      <groupId>org.schwering</groupId>
-	      <artifactId>irclib</artifactId>
-	      <version>${irclib.version}</version>
-	    </dependency>
-		  -->
 			<dependency>
 				<groupId>org.slf4j</groupId>
 				<artifactId>slf4j-api</artifactId>
@@ -88,6 +80,7 @@
 				<artifactId>gson</artifactId>
 				<version>${gson.version}</version>
 			</dependency>
+      <!--
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-core</artifactId>
@@ -103,11 +96,17 @@
 				<artifactId>spring-context</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
+			-->
 			<dependency>
 				<groupId>commons-io</groupId>
 				<artifactId>commons-io</artifactId>
 				<version>2.4</version>
 			</dependency>
+      <dependency>
+        <groupId>args4j</groupId>
+        <artifactId>args4j</artifactId>
+        <version>2.32</version>
+      </dependency>
 			<!-- Need to use same version as active objects -->
 			<dependency>
 				<groupId>com.google.guava</groupId>
@@ -135,7 +134,76 @@
 				<artifactId>httpclient</artifactId>
 				<version>4.3.6</version>
 			</dependency>
-		</dependencies>
+      <!-- Apache DS dependencies -->
+      <dependency>
+        <groupId>org.apache.directory.server</groupId>
+        <artifactId>apacheds-all</artifactId>
+        <version>${apache.ds.version}</version>
+        <exclusions>
+          <!-- exclude additional LDIF schema files to avoid conflicts through
+            multiple copies -->
+          <exclusion>
+            <groupId>org.apache.directory.shared</groupId>
+            <artifactId>shared-ldap-schema</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.directory.api</groupId>
+            <artifactId>api-ldap-schema-data</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.directory.server</groupId>
+        <artifactId>apacheds-server-integ</artifactId>
+        <version>${apache.ds.version}</version>
+        <exclusions>
+          <!-- exclude additional LDIF schema files to avoid conflicts through
+            multiple copies -->
+          <exclusion>
+            <groupId>org.apache.directory.shared</groupId>
+            <artifactId>shared-ldap-schema</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.directory.api</groupId>
+            <artifactId>api-ldap-schema-data</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.directory.server</groupId>
+        <artifactId>apacheds-core-integ</artifactId>
+        <version>${apache.ds.version}</version>
+        <exclusions>
+          <!-- exclude additional LDIF schema files to avoid conflicts through
+            multiple copies -->
+          <exclusion>
+            <groupId>org.apache.directory.shared</groupId>
+            <artifactId>shared-ldap-schema</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.directory.api</groupId>
+            <artifactId>api-ldap-schema-data</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.directory.server</groupId>
+        <artifactId>apacheds-server-jndi</artifactId>
+        <version>${apache.ds.version}</version>
+        <exclusions>
+          <!-- exclude additional LDIF schema files to avoid conflicts through
+            multiple copies -->
+          <exclusion>
+            <groupId>org.apache.directory.shared</groupId>
+            <artifactId>shared-ldap-schema</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.directory.api</groupId>
+            <artifactId>api-ldap-schema-data</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+    </dependencies>
 	</dependencyManagement>
 
 	<build>
@@ -194,6 +262,11 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>2.18.1</version>
 				</plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.6</version>
+        </plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-javadoc-plugin</artifactId>
