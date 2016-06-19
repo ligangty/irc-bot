@@ -16,7 +16,7 @@ public class LDAPHandlerTest
 
     @Test
     public void test(){
-        handler.searchUser( "user" );
+        handler.searchUser( "gli" );
     }
 
 }

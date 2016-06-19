@@ -15,8 +15,6 @@ public class LDAPUser
 
     private String email;
 
-    private String managerUsername;
-
     private String jobTitle;
 
     private String employeeNumber;
@@ -65,16 +63,6 @@ public class LDAPUser
     void setEmail( String email )
     {
         this.email = email;
-    }
-
-    public String getManagerUsername()
-    {
-        return managerUsername;
-    }
-
-    void setManagerUsername( String managerUsername )
-    {
-        this.managerUsername = managerUsername;
     }
 
     public String getJobTitle()

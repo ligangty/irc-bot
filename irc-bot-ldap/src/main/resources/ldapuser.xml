@@ -1,0 +1,30 @@
+<attributes>
+  <entry>
+    <ldapAttribute>cn</ldapAttribute>
+    <userAttribute>realName</userAttribute>
+  </entry>
+  <entry>
+    <ldapAttribute>mail</ldapAttribute>
+    <userAttribute>email</userAttribute>
+  </entry>
+  <entry>
+    <ldapAttribute>rhatJobTitle</ldapAttribute>
+    <userAttribute>jobTitle</userAttribute>
+  </entry>
+  <entry>
+    <ldapAttribute>employeeNumber</ldapAttribute>
+    <userAttribute>employeeNumber</userAttribute>
+  </entry>
+  <entry>
+    <ldapAttribute>employeeType</ldapAttribute>
+    <userAttribute>employeeType</userAttribute>
+  </entry>
+  <entry>
+    <ldapAttribute>rhatLocation</ldapAttribute>
+    <userAttribute>location</userAttribute>
+  </entry>
+  <entry>
+    <ldapAttribute>hireDate</ldapAttribute>
+    <userAttribute>hireDate</userAttribute>
+  </entry>
+</attributes>
