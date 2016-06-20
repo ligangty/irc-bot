@@ -22,13 +22,17 @@ public class Options
              usage = "Nick Name the irc bot will use in the channel" )
     private String nickName = "irc-bot";
 
-    @Option( name = "-c", aliases = { "--channel" }, metaVar = "CHANNELS", usage = "Channels the irc bot will join",
+    @Option( name = "-c", aliases = { "--channel" }, metaVar = "CHANNEL", usage = "Channel the irc bot will join",
              required = true )
-    private List<String> channels;
+    private String channel;
 
     @Option( name = "-f", aliases = "--ldap-config", metaVar = "LDAPCONFIG",
              usage = "Ldap configuration file used to specify ldap search options, see readme for the format" )
     private String ldapConfig;
+
+    @Option( name = "-a", aliases = "--ldap-attr-config", metaVar = "LDAPUSERATTRCONFIG",
+             usage = "Ldap attributes settings file in the search result, see readme for the format" )
+    private String ldapUserAttrConfig;
 
     @Option( name = "-h", aliases = { "--help" }, help = true, usage = "Print this help screen and exit" )
     private boolean help;
@@ -93,14 +97,14 @@ public class Options
         this.nickName = nickName;
     }
 
-    public List<String> getChannels()
+    public String getChannel()
     {
-        return channels;
+        return channel;
     }
 
-    public void setChannels( List<String> channels )
+    public void setChannel( String channel )
     {
-        this.channels = channels;
+        this.channel = channel;
     }
 
     public String getLdapConfig()
@@ -111,6 +115,16 @@ public class Options
     public void setLdapConfig( String ldapConfig )
     {
         this.ldapConfig = ldapConfig;
+    }
+
+    public String getLdapUserAttrConfig()
+    {
+        return ldapUserAttrConfig;
+    }
+
+    public void setLdapUserAttrConfig( String ldapUserAttrConfig )
+    {
+        this.ldapUserAttrConfig = ldapUserAttrConfig;
     }
 
     public boolean isHelp()

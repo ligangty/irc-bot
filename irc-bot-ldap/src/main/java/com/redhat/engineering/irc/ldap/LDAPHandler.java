@@ -17,7 +17,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
@@ -25,19 +29,25 @@ import java.util.Properties;
  */
 public class LDAPHandler
 {
-    //    private final Options options;
-
     private final Properties ldapConfig = new Properties();
 
     private static final String DEFAULT_LDAP_CFG = "ldap.properties";
 
+    private List<LDAPAttrEntry> ldapUserAttrs;
+
     public LDAPHandler( Options options )
     {
-        //        this.options = options;
         initLdapCfg( options );
+        synchronized ( this )
+        {
+            if ( ldapUserAttrs == null )
+            {
+                ldapUserAttrs = new LdapAttributesHandler().getLdapUserAttrsMap( options.getLdapUserAttrConfig() );
+            }
+        }
     }
 
-    private void initLdapCfg( Options options )
+    private synchronized void initLdapCfg( Options options )
     {
         boolean cfgSpecified = false;
         if ( options != null )
@@ -82,38 +92,60 @@ public class LDAPHandler
         }
     }
 
-    public LDAPUser searchUser( String... uids )
+    public List<LDAPUserDisplay> searchUserById( String... uids )
     {
         LdapConnection ldap = null;
+        final List<LDAPUserDisplay> displays = new ArrayList<>( ldapUserAttrs.size() );
+        final SimpleDateFormat toFormat = new SimpleDateFormat( "E, MMM dd, yyyy" );
         try
         {
             ldap = this.openLdapConnection();
-            //            System.out.println( "connected:" + ldap.isConnected() );
-            //            System.out.println( "authenticated:" + ldap.isAuthenticated() );
             final String baseDN = ldapConfig.getProperty( "ldap.search.baseDn" );
-
             List<String> uidList = Arrays.asList( uids );
             String filter = "(|(uid=" + Joiner.on( ")(uid=" ).join( uidList ) + "))";
-            String attrString = ldapConfig.getProperty( "ldap.search.user.attrs" );
-            String[] attrs = { "uid" };
-            if ( StringUtils.isNotBlank( attrString ) )
-            {
-                attrs = attrString.split( "," );
-            }
-            EntryCursor cursor = ldap.search( baseDN, filter, SearchScope.SUBTREE, attrs );
-
+            String[] attrs = new String[ldapUserAttrs.size()];
             int i = 0;
+            for ( LDAPAttrEntry entry : ldapUserAttrs )
+            {
+                attrs[i] = entry.getLdapAttribute();
+                i++;
+            }
+
+            EntryCursor cursor = ldap.search( baseDN, filter, SearchScope.SUBTREE, attrs );
 
             for ( Entry entry : cursor )
             {
-                for ( Attribute attr : entry.getAttributes() )
+                for ( final Attribute attr : entry.getAttributes() )
                 {
-                    System.out.println( attr.getId() + ":" + attr.getString() );
+                    for ( LDAPAttrEntry ent : ldapUserAttrs )
+                    {
+                        if ( ent.getLdapAttribute().equalsIgnoreCase( attr.getId() ) )
+                        {
+                            if ( "date".equalsIgnoreCase( ent.getType() ) )
+                            {
+                                SimpleDateFormat fromFormat = new SimpleDateFormat( ent.getPattern() );
+                                try
+                                {
+                                    Date date = fromFormat.parse( attr.getString() );
+                                    displays.add( new LDAPUserDisplay( ent.getUserAttribute(), toFormat.format( date ),
+                                                                       ent.getSequence() ) );
+                                }
+                                catch ( ParseException e )
+                                {
+                                    System.err.println( e.getMessage() );
+                                }
+                            }
+                            else
+                            {
+                                displays.add( new LDAPUserDisplay( ent.getUserAttribute(), attr.getString(),
+                                                                   ent.getSequence() ) );
+                            }
+
+                            break;
+                        }
+                    }
                 }
-                System.out.println( "=========================" );
-                i++;
             }
-            System.out.println( "num count:" + i );
         }
         catch ( LdapException | NoSuchAlgorithmException e )
         {
@@ -134,7 +166,12 @@ public class LDAPHandler
             }
         }
 
-        return null;
+        if ( !displays.isEmpty() )
+        {
+            displays.sort( ( display1, display2 ) -> display1.getSequence() >= display2.getSequence() ? 1 : -1 );
+        }
+
+        return displays;
     }
 
     private LdapConnection openLdapConnection()

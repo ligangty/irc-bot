@@ -6,6 +6,8 @@ import org.apache.camel.main.Main;
 import org.apache.camel.main.MainListenerSupport;
 import org.apache.camel.main.MainSupport;
 
+import java.util.List;
+
 /**
  *
  */
@@ -28,26 +30,14 @@ public class IRCBotLDAPRun
     public void boot( Options options )
             throws Exception
     {
-        final StringBuilder builder = new StringBuilder();
-        builder.append( "irc:" )
-               .append( options.getNickName() )
-               .append( "@" )
-               .append( options.getIrcHost() )
-               .append( "?channels=#" )
-               .append( Joiner.on( ",#" ).join( options.getChannels() ) )
-               .append( "&nickname=" )
-               .append( options.getNickName() )
-               .append(
-                       "&onReply=true&onNick=false&onQuit=false&onJoin=false&onKick=false&onMode=false&onPart=false&onTopic=false" );
-        System.out.println( builder.toString() );
         // create a Main instance
-        final Main main= new Main();
+        final Main main = new Main();
         // add routes
-        main.addRouteBuilder( new IRCRouteBuilder( builder.toString() ) );
+        main.addRouteBuilder( new IRCRouteBuilder( options ) );
         // add event listener
         main.addMainListener( new Events() );
         // run until you terminate the JVM
-        System.out.println( "Starting Camel. Use ctrl + c to terminate the JVM.\n" );
+        System.out.println( "Not support as a service now, please use kill command to stop service.\n" );
         main.run();
     }
 
@@ -56,9 +46,25 @@ public class IRCBotLDAPRun
     {
         private String ircEndpoint;
 
-        public IRCRouteBuilder( String ircEndpoint )
+        private LDAPHandler handler;
+
+        public IRCRouteBuilder( Options options )
         {
-            this.ircEndpoint = ircEndpoint;
+            final StringBuilder builder = new StringBuilder();
+            builder.append( "irc:" )
+                   .append( options.getNickName() )
+                   .append( "@" )
+                   .append( options.getIrcHost() )
+                   .append( "?channels=#" )
+                   .append( options.getChannel() )
+                   .append( "&nickname=" )
+                   .append( options.getNickName() )
+                   .append(
+                           "&onReply=true&onNick=false&onQuit=false&onJoin=false&onKick=false&onMode=false&onPart=false&onTopic=false" );
+
+            this.ircEndpoint = builder.toString();
+            this.handler = new LDAPHandler( options );
+
         }
 
         @Override
@@ -67,10 +73,25 @@ public class IRCBotLDAPRun
         {
             from( ircEndpoint ).process( exchange -> {
                 String in = exchange.getIn().getBody().toString();
-                System.out.println( exchange.getIn().getBody() );
                 if ( in.startsWith( "!&" ) )
                 {
-                    exchange.getOut().setBody( "yes I got you:" + in );
+                    if ( in.substring( "!&".length() ).startsWith( "find " ) )
+                    {
+                        String uid = in.substring( "!&find ".length() ).trim();
+                        List<LDAPUserDisplay> result = handler.searchUserById( uid );
+                        if ( result.isEmpty() )
+                        {
+                            exchange.getOut().setBody( "user not found for uid: " + uid );
+                        }
+                        else
+                        {
+                            exchange.getOut().setBody( result.toString() );
+                        }
+                    }
+                    else
+                    {
+                        exchange.getOut().setBody( "Command not support:" + in );
+                    }
                 }
                 else
                 {
