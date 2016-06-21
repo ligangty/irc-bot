@@ -25,6 +25,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
+import static java.lang.System.err;
+
 /**
  */
 public class LDAPHandler
@@ -62,7 +64,7 @@ public class LDAPHandler
                 }
                 catch ( FileNotFoundException e )
                 {
-                    System.err.println( e.getMessage() );
+                    err.println( e.getMessage() );
                 }
                 if ( stream != null )
                 {
@@ -73,7 +75,7 @@ public class LDAPHandler
                     }
                     catch ( IOException e )
                     {
-                        System.err.println( e.getMessage() );
+                        err.println( e.getMessage() );
                     }
                 }
             }
@@ -86,7 +88,7 @@ public class LDAPHandler
                 }
                 catch ( IOException e )
                 {
-                    System.err.println( e.getMessage() );
+                    err.println( e.getMessage() );
                 }
             }
         }
@@ -132,7 +134,7 @@ public class LDAPHandler
                                 }
                                 catch ( ParseException e )
                                 {
-                                    System.err.println( e.getMessage() );
+                                    err.println( e.getMessage() );
                                 }
                             }
                             else

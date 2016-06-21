@@ -1,6 +1,8 @@
 package com.redhat.engineering.irc.ldap;
 
 import com.google.common.base.Joiner;
+import org.apache.camel.Predicate;
+import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.main.Main;
 import org.apache.camel.main.MainListenerSupport;
@@ -50,54 +52,49 @@ public class IRCBotLDAPRun
 
         public IRCRouteBuilder( Options options )
         {
-            final StringBuilder builder = new StringBuilder();
-            builder.append( "irc:" )
-                   .append( options.getNickName() )
-                   .append( "@" )
-                   .append( options.getIrcHost() )
-                   .append( "?channels=#" )
-                   .append( options.getChannel() )
-                   .append( "&nickname=" )
-                   .append( options.getNickName() )
-                   .append(
-                           "&onReply=true&onNick=false&onQuit=false&onJoin=false&onKick=false&onMode=false&onPart=false&onTopic=false" );
-
-            this.ircEndpoint = builder.toString();
+            this.ircEndpoint =
+                    "irc:" + options.getNickName() + "@" + options.getIrcHost() + "?channels=#" + options.getChannel()
+                            + "&nickname=" + options.getNickName()
+                            + "&onReply=true&onNick=false&onQuit=false&onJoin=false&onKick=false&onMode=false&onPart=false&onTopic=false";
             this.handler = new LDAPHandler( options );
-
         }
 
         @Override
         public void configure()
                 throws Exception
         {
-            from( ircEndpoint ).process( exchange -> {
+            final Processor findCmdProcessor = exchange -> {
                 String in = exchange.getIn().getBody().toString();
-                if ( in.startsWith( "!&" ) )
+                String uid = in.substring( "!&find ".length() ).trim();
+                List<LDAPUserDisplay> result = handler.searchUserById( uid );
+                if ( result.isEmpty() )
                 {
-                    if ( in.substring( "!&".length() ).startsWith( "find " ) )
-                    {
-                        String uid = in.substring( "!&find ".length() ).trim();
-                        List<LDAPUserDisplay> result = handler.searchUserById( uid );
-                        if ( result.isEmpty() )
-                        {
-                            exchange.getOut().setBody( "user not found for uid: " + uid );
-                        }
-                        else
-                        {
-                            exchange.getOut().setBody( result.toString() );
-                        }
-                    }
-                    else
-                    {
-                        exchange.getOut().setBody( "Command not support:" + in );
-                    }
+                    exchange.getOut().setBody( "user not found for uid: " + uid );
                 }
                 else
                 {
-                    exchange.getOut().setBody( "" );
+                    exchange.getOut().setBody( result.toString() );
                 }
-            } ).to( ircEndpoint );
+            };
+            final Predicate invalidCmdPredicate = exchange -> {
+                final String in = exchange.getIn().getBody().toString();
+                return in.startsWith( "!&" ) && !in.substring( "!&".length() ).startsWith( "find " );
+            };
+            final Processor invalidCmdProcessor = exchange -> {
+                String in = exchange.getIn().getBody().toString();
+                exchange.getOut().setBody( "Command not support:" + in.substring( "!&".length(), in.indexOf( " " ) ) );
+            };
+            from( ircEndpoint ).routeId( "channeled" )
+                               .choice()
+                               .when( body().startsWith( "!&find " ) )
+                               .process( findCmdProcessor )
+                               .to( ircEndpoint )
+                               .when( invalidCmdPredicate )
+                               .process( invalidCmdProcessor )
+                               .to( ircEndpoint )
+                               .otherwise()
+                               .to( "log:irc-bot-ldap?level=DEBUG" )
+                               .endChoice();
 
         }
     }
