@@ -1,6 +1,6 @@
 package com.redhat.engineering.irc.ldap;
 
-import com.google.common.base.Joiner;
+import org.apache.camel.CamelContext;
 import org.apache.camel.Predicate;
 import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
@@ -9,6 +9,12 @@ import org.apache.camel.main.MainListenerSupport;
 import org.apache.camel.main.MainSupport;
 
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 
 /**
  *
@@ -50,6 +56,8 @@ public class IRCBotLDAPRun
 
         private LDAPHandler handler;
 
+        private final ExecutorService executor;
+
         public IRCRouteBuilder( Options options )
         {
             this.ircEndpoint =
@@ -57,24 +65,36 @@ public class IRCBotLDAPRun
                             + "&nickname=" + options.getNickName()
                             + "&onReply=true&onNick=false&onQuit=false&onJoin=false&onKick=false&onMode=false&onPart=false&onTopic=false";
             this.handler = new LDAPHandler( options );
+            int cpus = Runtime.getRuntime().availableProcessors();
+            final ThreadFactory tfac = new NamedThreadFactory( "irc-ldap-user-search" );
+            executor = Executors.newFixedThreadPool( cpus * 2, tfac );
         }
 
         @Override
         public void configure()
                 throws Exception
         {
+            final String intermediate = "direct:irc-ldap";
             final Processor findCmdProcessor = exchange -> {
                 String in = exchange.getIn().getBody().toString();
                 String uid = in.substring( "!&find ".length() ).trim();
-                List<LDAPUserDisplay> result = handler.searchUserById( uid );
-                if ( result.isEmpty() )
-                {
-                    exchange.getOut().setBody( "user not found for uid: " + uid );
-                }
-                else
-                {
-                    exchange.getOut().setBody( result.toString() );
-                }
+                final CamelContext context = exchange.getContext();
+
+                executor.execute( () -> {
+                    List<LDAPUserDisplay> result = handler.searchUserById( uid );
+                    System.out.println( String.format( "[%s] is handling the ldap searching for " + "uid: %s",
+                                                       Thread.currentThread().getName(), uid ) );
+                    String searchResult = "";
+                    if ( result.isEmpty() )
+                    {
+                        searchResult = "user not found for uid: " + uid;
+                    }
+                    else
+                    {
+                        searchResult = result.toString();
+                    }
+                    context.createProducerTemplate().sendBody( intermediate, searchResult );
+                } );
             };
             final Predicate invalidCmdPredicate = exchange -> {
                 final String in = exchange.getIn().getBody().toString();
@@ -84,11 +104,10 @@ public class IRCBotLDAPRun
                 String in = exchange.getIn().getBody().toString();
                 exchange.getOut().setBody( "Command not support:" + in.substring( "!&".length(), in.indexOf( " " ) ) );
             };
-            from( ircEndpoint ).routeId( "channeled" )
+            from( ircEndpoint ).routeId( "channeled-in" )
                                .choice()
                                .when( body().startsWith( "!&find " ) )
                                .process( findCmdProcessor )
-                               .to( ircEndpoint )
                                .when( invalidCmdPredicate )
                                .process( invalidCmdProcessor )
                                .to( ircEndpoint )
@@ -96,6 +115,7 @@ public class IRCBotLDAPRun
                                .to( "log:irc-bot-ldap?level=DEBUG" )
                                .endChoice();
 
+            from( intermediate ).routeId( "channeled-out" ).to( ircEndpoint );
         }
     }
 
